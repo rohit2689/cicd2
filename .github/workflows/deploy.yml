@@ -1,9 +1,9 @@
-name: Deploy Node App to EC2
+name: Deploy Node TypeScript App to EC2
 
 on:
   push:
     branches:
-      - main  
+      - main 
 
 jobs:
   deploy:
@@ -13,26 +13,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # 4️⃣ Generate Prisma client
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # 5️⃣ Build TypeScript
       - name: Build TypeScript
         run: npm run dev
 
+      # 6️⃣ Copy files to EC2
       - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.6
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           source: "."
           target: "/home/ubuntu/apps/myapp"
 
+      # 7️⃣ SSH to EC2 and restart app with PM2
       - name: SSH and restart PM2
         uses: appleboy/ssh-action@v0.1.6
         with:
@@ -42,4 +51,5 @@ jobs:
           script: |
             cd /home/ubuntu/apps/myapp
             npm install
+            npx prisma generate
             pm2 restart myapp || pm2 start npm --name myapp -- run dev
